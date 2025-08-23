@@ -13,6 +13,7 @@ VVP ?= vvp
 VERIBLE ?= verible-verilog-lint
 YOSYS ?= yosys
 NETLISTSVG ?= netlistsvg
+SVSV ?= sv2v
 
 # Directories
 LOG_DIR ?= ./logs
@@ -35,7 +36,7 @@ MAX_ERRORS_SYNTH ?= 1
 lint:
 	@echo "=== Linting $(SIM_TARGET).v in $(SIM_PATH) ==="
 	@if [ ! -d "$(LOG_DIR)" ]; then mkdir -p $(LOG_DIR); fi
-	@$(VERIBLE) $(SIM_PATH).v > $(LOG_DIR)/$(SIM_TARGET)lint$(TIMESTAMP).log 2>&1
+	@$(VERIBLE) $(SIM_PATH).sv > $(LOG_DIR)/$(SIM_TARGET)lint$(TIMESTAMP).log 2>&1
 	@LINT_EXIT=$$?; \
 	if [ $$LINT_EXIT -ne 0 ]; then \
 		echo "Lint FAILED. Check $(LOG_DIR)/$(SIM_TARGET)lint$(TIMESTAMP).log"; \
@@ -52,7 +53,7 @@ sim:
 	@if [ ! -d "$(LOG_DIR)" ]; then mkdir -p $(LOG_DIR); fi
 	@if [ ! -d "$(WAVE_DIR)" ]; then mkdir -p $(WAVE_DIR); fi
 	@if [ ! -d "$(SIM_OUT)" ]; then mkdir -p $(SIM_OUT); fi
-	@$(IVERILOG) -o $(SIM_OUT)/$(SIM_TARGET).out $(SIM_PATH).v $(SIM_DIR)tb/$(SIM_TARGET)_tb.v > $(LOG_DIR)/$(SIM_TARGET)_compile$(TIMESTAMP).log 2>&1
+	@$(IVERILOG) -g2012 -Wall -o $(SIM_OUT)/$(SIM_TARGET).out $(SIM_PATH).sv $(SIM_DIR)tb/$(SIM_TARGET)_tb.sv > $(LOG_DIR)/$(SIM_TARGET)_compile$(TIMESTAMP).log 2>&1
 	@COMP_EXIT=$$?; \
 	if [ $$COMP_EXIT -ne 0 ]; then \
 		echo "Compilation FAILED. Check $(LOG_DIR)/$(SIM_TARGET)compile$(TIMESTAMP).log"; \
@@ -80,7 +81,8 @@ synth:
 	@echo "=== Synthesizing $(SIM_PATH).v with Yosys ==="
 	@if [ ! -d "$(LOG_DIR)" ]; then mkdir -p $(LOG_DIR); fi
 	@if [ ! -d "$(SYNTH_OUT)" ]; then mkdir -p $(SYNTH_OUT); fi
-	@$(YOSYS) -p "read_verilog $(SIM_PATH).v; synth; write_json $(SYNTH_OUT)/$(SIM_TARGET).json" > $(LOG_DIR)/$(SIM_TARGET)synth$(TIMESTAMP).log 2>&1
+	@sv2v $(SIM_PATH).sv > $(SYNTH_OUT)/$(SIM_TARGET).v
+	@$(YOSYS) -p "read_verilog $(SYNTH_OUT)/$(SIM_TARGET).v; synth; write_json $(SYNTH_OUT)/$(SIM_TARGET).json" > $(LOG_DIR)/$(SIM_TARGET)synth$(TIMESTAMP).log 2>&1
 	@jq .  $(SYNTH_OUT)/$(SIM_TARGET).json > $(SYNTH_OUT)/$(SIM_TARGET)_clean.json
 	@SYNTH_EXIT=$$?; \
 	if [ $$SYNTH_EXIT -ne 0 ]; then \
