@@ -28,4 +28,12 @@ else
     echo "GTKWave already installed: $(gtkwave --version)"
 fi
 
+echo "=== Installing NETLISTSVG ==="
+if ! command -v netlistsvg &> /dev/null; then
+    sudo apt install -y nodejs npm
+    sudo npm install -g netlistsvg
+else
+    echo "netlistsvg already installed: $(netlistsvg --version)"
+fi
+
 echo "✅ Core logic design tools installation complete!"

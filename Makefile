@@ -12,6 +12,7 @@ IVERILOG ?= iverilog
 VVP ?= vvp
 VERIBLE ?= verible-verilog-lint
 YOSYS ?= yosys
+NETLISTSVG ?= netlistsvg
 
 # Directories
 LOG_DIR ?= ./logs
@@ -79,19 +80,27 @@ synth:
 	@echo "=== Synthesizing $(SIM_PATH).v with Yosys ==="
 	@if [ ! -d "$(LOG_DIR)" ]; then mkdir -p $(LOG_DIR); fi
 	@if [ ! -d "$(SYNTH_OUT)" ]; then mkdir -p $(SYNTH_OUT); fi
-	@$(YOSYS) -p "read_verilog $(SIM_PATH).v; synth; write_blif $(SYNTH_OUT)/$(SIM_TARGET).blif" > $(LOG_DIR)/$(SIM_TARGET)synth$(TIMESTAMP).log 2>&1
+	@$(YOSYS) -p "read_verilog $(SIM_PATH).v; synth; write_json $(SYNTH_OUT)/$(SIM_TARGET).json" > $(LOG_DIR)/$(SIM_TARGET)synth$(TIMESTAMP).log 2>&1
+	@jq .  $(SYNTH_OUT)/$(SIM_TARGET).json > $(SYNTH_OUT)/$(SIM_TARGET)_clean.json
 	@SYNTH_EXIT=$$?; \
 	if [ $$SYNTH_EXIT -ne 0 ]; then \
 		echo "Synthesis FAILED. Check $(LOG_DIR)/$(SIM_TARGET)synth$(TIMESTAMP).log"; \
 		exit 1; \
 	else \
-		echo "Synthesis PASSED. Netlist: $(SIM_TARGET).blif"; \
+		echo "Synthesis PASSED. Netlist: $(SIM_TARGET).json"; \
 	fi
+
+# ================================================
+# Schematic Target
+# ================================================
+sch:
+	@echo "=== Schematic for $(SIM_PATH).v with netlistsvg ==="
+	@$(NETLISTSVG) $(SYNTH_OUT)/$(SIM_TARGET)_clean.json -o $(SYNTH_OUT)/$(SIM_TARGET).svg
 
 # ================================================
 # Full Flow Target
 # ================================================
-all: lint sim synth
+all: lint sim synth sch
 
 # ================================================
 # Clean
