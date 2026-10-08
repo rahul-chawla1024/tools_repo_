@@ -49,14 +49,15 @@ lint:
 # Simulation Target
 # ================================================
 sim:
-	@echo "=== Compiling $(SIM_TARGET).v with Icarus ==="
+	@echo "=== Compiling $(SIM_TARGET) using RTL file list $(SIM_PATH).f with Icarus ==="
 	@if [ ! -d "$(LOG_DIR)" ]; then mkdir -p $(LOG_DIR); fi
 	@if [ ! -d "$(WAVE_DIR)" ]; then mkdir -p $(WAVE_DIR); fi
 	@if [ ! -d "$(SIM_OUT)" ]; then mkdir -p $(SIM_OUT); fi
-	@$(IVERILOG) -g2012 -Wall -o $(SIM_OUT)/$(SIM_TARGET).out $(SIM_PATH).sv $(SIM_DIR)tb/$(SIM_TARGET)_tb.sv > $(LOG_DIR)/$(SIM_TARGET)_compile$(TIMESTAMP).log 2>&1
+	@RTL_FILES=$$(grep -vE '^[[:space:]]*($$|#)' $(SIM_PATH).f); \
+	$(IVERILOG) -g2012 -Wall -o $(SIM_OUT)/$(SIM_TARGET).out $$RTL_FILES $(SIM_DIR)tb/$(SIM_TARGET)_tb.sv > $(LOG_DIR)/$(SIM_TARGET)_compile$(TIMESTAMP).log 2>&1
 	@COMP_EXIT=$$?; \
 	if [ $$COMP_EXIT -ne 0 ]; then \
-		echo "Compilation FAILED. Check $(LOG_DIR)/$(SIM_TARGET)compile$(TIMESTAMP).log"; \
+		echo "Compilation FAILED. Check $(LOG_DIR)/$(SIM_TARGET)_compile$(TIMESTAMP).log"; \
 		exit 1; \
 	else \
 		echo "Compilation PASSED"; \
@@ -78,12 +79,15 @@ sim:
 # Synthesis Target
 # ================================================
 synth:
-	@echo "=== Synthesizing $(SIM_PATH).v with Yosys ==="
+	@echo "=== Synthesizing $(SIM_TARGET).sv with Yosys ==="
 	@if [ ! -d "$(LOG_DIR)" ]; then mkdir -p $(LOG_DIR); fi
 	@if [ ! -d "$(SYNTH_OUT)" ]; then mkdir -p $(SYNTH_OUT); fi
-	@sv2v $(SIM_PATH).sv > $(SYNTH_OUT)/$(SIM_TARGET).v
+	@echo "=== Converting RTL sources with sv2v ==="
+	@RTL_FILES=$$(cat $(SIM_PATH).f); \
+	sv2v $$RTL_FILES > $(SYNTH_OUT)/$(SIM_TARGET).v
+	@echo "=== Running Yosys ==="
 	@$(YOSYS) -p "read_verilog $(SYNTH_OUT)/$(SIM_TARGET).v; synth; write_json $(SYNTH_OUT)/$(SIM_TARGET).json" > $(LOG_DIR)/$(SIM_TARGET)synth$(TIMESTAMP).log 2>&1
-	@jq .  $(SYNTH_OUT)/$(SIM_TARGET).json > $(SYNTH_OUT)/$(SIM_TARGET)_clean.json
+	@jq . $(SYNTH_OUT)/$(SIM_TARGET).json > $(SYNTH_OUT)/$(SIM_TARGET)_clean.json
 	@SYNTH_EXIT=$$?; \
 	if [ $$SYNTH_EXIT -ne 0 ]; then \
 		echo "Synthesis FAILED. Check $(LOG_DIR)/$(SIM_TARGET)synth$(TIMESTAMP).log"; \
